@@ -1,4 +1,4 @@
-# AI-4-Media-Class-Activities-24-25
+# AI-4-creativity-Class-Activities-25-26
 
 Open terminal and copy and paste these three commands (one at a time) to create a new conda environment for this unit. 
 
