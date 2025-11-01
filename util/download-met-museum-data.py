@@ -5,71 +5,82 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from bs4 import BeautifulSoup
-
 def download_image(url, save_path, session):
-    response = session.get(url, stream=True)
-    if response.status_code == 200:
+    """Downloads an image from a URL and saves it."""
+    try:
+        response = session.get(url, stream=True, timeout=15)
+        response.raise_for_status()
         with open(save_path, 'wb') as file:
-            for chunk in response.iter_content(1024):
+            for chunk in response.iter_content(8192):
                 file.write(chunk)
-        print(f"Downloaded: {save_path}")
-    else:
-        print(f"Failed to download image from {url}")
+        print(f"✅ Downloaded: {save_path}")
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Failed to download {url}: {e}")
 
-def scrape_met_museum_image(page_url, item_id, save_directory):
-    session = requests.Session()
-    retry = Retry(connect=3, backoff_factor=0.5)
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
+def fetch_met_image_api(object_id, save_directory, session):
+    """Fetches artwork data from The Met API and downloads its image if available."""
+    api_url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{object_id}"
+    try:
+        response = session.get(api_url, timeout=10)
+        if response.status_code == 404:
+            print(f"❌ Object {object_id} not found.")
+            return False
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ API access failed for {object_id}: {e}")
+        return False
 
-    response = session.get(page_url)
-    if response.status_code != 200:
-        print(f"Failed to access {page_url}")
-        return
+    data = response.json()
+    image_url = data.get("primaryImage")
 
-    soup = BeautifulSoup(response.text, 'html.parser')
+    if not image_url:
+        print(f"🚫 No image for object {object_id}: {data.get('title', 'Unknown')}")
+        return False
 
-    # Find the main image on the page (this selector may need adjustment if the site changes)
-    image_tag = soup.find('img', class_='artwork__image')
-    if not image_tag:
-        print(f"No image found on {page_url}")
-        return
+    title = data.get("title", "Unknown Title")
+    artist = data.get("artistDisplayName", "Unknown Artist")
+    date = data.get("objectDate", "Unknown Date")
 
-    image_url = image_tag['src']
-    if not image_url.startswith('http'):
-        # Make the URL absolute if it's relative
-        image_url = f"https://www.metmuseum.org{image_url}"
+    print(f"🎨 {object_id}: {title} — {artist} ({date})")
 
-    # Extract a suitable filename from the URL
-    image_name = str(item_id) + '.jpg'
+    image_name = f"{object_id}.jpg"
     save_path = os.path.join(save_directory, image_name)
-
-    # Download the image
     download_image(image_url, save_path, session)
+    return True
 
 def main():
-    parser = argparse.ArgumentParser(description="Download random samples of artwork images from the Metropolitan Museum of Art website.")
-    parser.add_argument('--start_id', type=int, default=1, help="The starting ID for the range of artwork IDs.")
-    parser.add_argument('--end_id', type=int, default=100000, help="The ending ID for the range of artwork IDs.")
-    parser.add_argument('--num_samples', type=int, required=True, help="The number of random samples to download.")
-    parser.add_argument('--save_directory', type=str, default="class-datasets/met_images", help="The directory to save the downloaded images.")
+    parser = argparse.ArgumentParser(description="Download random public domain images from The Met Museum API.")
+    parser.add_argument('--num_samples', type=int, required=True, help="Number of random artworks to download.")
+    parser.add_argument('--save_directory', type=str, default="met_images", help="Directory to save images.")
     args = parser.parse_args()
 
-    base_url = "https://www.metmuseum.org/art/collection/search/"
-    save_directory = args.save_directory
+    os.makedirs(args.save_directory, exist_ok=True)
 
-    # Create the directory if it doesn't exist
-    os.makedirs(save_directory, exist_ok=True)
+    # Create a single requests session with retry strategy
+    session = requests.Session()
+    retry_strategy = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], backoff_factor=1)
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
 
-    # Generate a random sample of IDs
-    random_ids = random.sample(range(args.start_id, args.end_id + 1), args.num_samples)
+    # ✅ Fetch valid object IDs directly from The Met's API
+    print("📦 Fetching valid object IDs from The Met API...")
+    ids_response = session.get("https://collectionapi.metmuseum.org/public/collection/v1/objects")
+    ids_response.raise_for_status()
+    all_object_ids = ids_response.json()["objectIDs"]
 
-    for item_id in random_ids:
-        page_url = f"{base_url}{item_id}"
-        print(f"Scraping {page_url}")
-        scrape_met_museum_image(page_url, item_id, save_directory)
+    print(f"📊 Total valid objects: {len(all_object_ids):,}")
+
+    # Randomly sample N IDs from the valid ones
+    random_ids = random.sample(all_object_ids, args.num_samples)
+
+    success_count = 0
+    for object_id in random_ids:
+        print(f"\n🔍 Checking object {object_id}...")
+        if fetch_met_image_api(object_id, args.save_directory, session):
+            success_count += 1
+
+    print(f"\n✅ Finished! {success_count}/{args.num_samples} images downloaded successfully.")
 
 if __name__ == "__main__":
     main()

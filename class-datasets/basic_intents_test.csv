@@ -1,0 +1,28 @@
+intent,label,text
+Greeting,0,Hey there!
+Greeting,0,Good morning
+Greeting,0,Howdy!
+Farewell,1,Catch you later
+Farewell,1,Farewell
+Farewell,1,I am off now
+Positive Confirmation,2,That's right
+Positive Confirmation,2,Exactly
+Positive Confirmation,2,You got it
+Negative Confirmation,3,No way
+Negative Confirmation,3,That is incorrect
+Negative Confirmation,3,I don't think so
+Small Talk,4,How are things?
+Small Talk,4,What's new?
+Small Talk,4,Anything exciting going on?
+Time Enquiry,5,Could you give me the time?
+Time Enquiry,5,What's the time now?
+Time Enquiry,5,Do you know the time?
+Help,6,Could you help me out?
+Help,6,I am in need of assistance
+Help,6,I need some support
+Escalation to Human,7,Please connect me to a human
+Escalation to Human,7,I would like to speak to an agent
+Escalation to Human,7,Can you hand me over to support?
+Request Joke,8,Do you have any jokes?
+Request Joke,8,Can you tell a joke?
+Request Joke,8,I could use a laugh

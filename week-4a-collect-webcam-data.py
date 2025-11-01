@@ -38,9 +38,8 @@ Press ESC to exit the Command Palette if needed.
 import os
 import cv2
 
-# you need to be in your AI-4-MEDIA-23-24 directory
+# you need to be in your AI-4-Creativity-25-26 directory
 # to make sure you are in the correct directory, open the terminal and type in:
-# cd PATH_TO_/AI-4-MEDIA-23-24
 IMG_DIR = 'class-datasets/my-pose-classification-dataset'
 # define the number of classes of the different poses to collect
 NUM_OF_CLASSES = 3
